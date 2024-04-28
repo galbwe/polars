@@ -53,6 +53,7 @@ matplotlib
 # Other
 gevent
 nest_asyncio
+tables
 
 # -------
 # TOOLING

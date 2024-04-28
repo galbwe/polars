@@ -11,6 +11,7 @@ from polars.io.json import read_json
 from polars.io.ndjson import read_ndjson, scan_ndjson
 from polars.io.parquet import read_parquet, read_parquet_schema, scan_parquet
 from polars.io.pyarrow_dataset import scan_pyarrow_dataset
+from polars.io.hdf import read_hdf, scan_hdf
 from polars.io.spreadsheet import read_excel, read_ods
 
 __all__ = [
@@ -22,6 +23,7 @@ __all__ = [
     "read_database_uri",
     "read_delta",
     "read_excel",
+    "read_hdf",
     "read_ipc",
     "read_ipc_schema",
     "read_ipc_stream",
@@ -32,6 +34,7 @@ __all__ = [
     "read_parquet_schema",
     "scan_csv",
     "scan_delta",
+    "scan_hdf",
     "scan_iceberg",
     "scan_ipc",
     "scan_ndjson",

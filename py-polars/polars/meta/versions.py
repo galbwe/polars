@@ -36,7 +36,8 @@ def show_versions() -> None:
     pydantic:             2.6.3
     pyiceberg:            0.6.0
     pyxlsb:               1.0.10
-    sqlalchemy:           2.0.28
+    sqlalchemy:           2.0.29
+    tables:               3.9.2
     xlsx2csv:             0.8.2
     xlsxwriter:           3.2.0
     """  # noqa: W505
