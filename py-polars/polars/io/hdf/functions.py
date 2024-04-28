@@ -1,4 +1,5 @@
 from enum import Enum, unique
+from functools import partial
 from pathlib import Path
 
 import tables as tb
@@ -8,25 +9,40 @@ import polars._reexport as pl
 from polars.type_aliases import PolarsDataType
 
 
-def read_hdf(source: str | Path):
-    """"""
+def read_hdf(source: str | Path, where: str | None = None, slice_: slice | None = None, **kwargs):
+    """Read a table from a pytables h5 file to a polars dataframe"""
     # TODO: better docstring
+
+    # default to using the source parameter instead of the pytable open_file parameter
+    if "filename" in kwargs:
+        del kwargs["filename"]
+    # only allow reading
+    if "mode" in kwargs:
+        del kwargs["mode"]
+
     # open the file
-    with tb.open_file(source, mode="r") as h5file:
+    with tb.open_file(source, mode="r", **kwargs) as h5file:
         # TODO: check that this is a pytables file
         # TODO: support navigating to a specific table
         # TODO: support filtering the table
-        # find the table under the root
-        table = next(h5file.root._f_walknodes('Leaf'))
+        # find the table under the group 
+
+        # look for the correct table in the current group
+        leaves = h5file.root._v_leaves
+        # TODO: more robust selection method for table in current group
+        table = leaves.values()[0]
+
         # get the schema for the table
         schema = {
             col: _resolve_column_dtype(pytables_dtype)
             for col, pytables_dtype in table.coltypes.items()
         }
     
-        # get rows for the table
+
         # TODO: check if the system has enough memory and raise an error if not?
-        data = table.read()
+
+        data = _read_data(table, where, slice_)
+
         return pl.DataFrame(
             data={
                 f: data[f]
@@ -86,3 +102,16 @@ _PYTABLES_TO_POLARS_DTYPE_MAPPING = {
 def _resolve_column_dtype(pytables_dtype: _PytablesDatatype) -> PolarsDataType:
     # TODO: handle KeyError?
     return _PYTABLES_TO_POLARS_DTYPE_MAPPING[pytables_dtype]
+
+
+def _read_data(table, where, slice_):
+    if where is None:
+        read = table.read
+    elif isinstance(where, str):
+        read = partial(table.read_where, condition=where)
+    else:
+        raise ValueError(f"read_hdf received invalid where parameter: {where}")
+    if slice_ is not None:
+        read = partial(read, start=slice_.start, stop=slice_.stop, step=slice_.step)
+
+    return read()
