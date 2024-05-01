@@ -51,10 +51,6 @@ def _argentina_ozone_aqi_array_data():
     return [12, 14, 17, 14, 14]
 
 
-def _united_states_ozone_aqi_array_data():
-    return [30, 31, 38, 21, 40]
-
-
 def _air_quality_schema():
     return {"timestamp": pl_dtypes.Int32, "aqi": pl_dtypes.Int16, "city": pl_dtypes.String, "safe": pl_dtypes.Boolean}
 
@@ -153,3 +149,48 @@ def test_read_h5_array(hdf_path, fname, data, schema, where, slice_, pytables_kw
 #     assert False, "Implement this test"
 
 # TODO: test compression?
+
+
+def test_write_hdf(tmp_path):
+    dir = tmp_path / "hdf"
+    dir.mkdir()
+    # TODO: test both str and Path objects
+    fpath = dir / "test.h5"
+
+    # TODO: add other datatypes
+    df = pl.DataFrame({
+        "integer": [1, 2, 3],
+        "float": [1.0, 2.0, 3.0],
+        "string": ["one", "two", "three"],
+    })
+
+    table = "test_table"
+
+    df.write_hdf(table, path=fpath)
+
+    # read the dataframe back from the h5 file
+    df_read = pl.read_hdf(fpath)
+    assert_frame_equal(df, df_read)
+
+
+def test_write_hdf_to_a_nested_group(tmp_path):
+    dir = tmp_path / "hdf"
+    dir.mkdir()
+    fpath = dir / "test.h5"
+
+    df = pl.DataFrame({
+        "x": [1, 2, 3],
+        "y": [1.0, 2.0, 3.0],
+        "z": ["one", "two", "three"],
+    })
+
+    group = "/nested/group"
+    table = "test_table"
+
+    df.write_hdf(table, path=fpath, group=group)
+
+    df_read = pl.read_hdf(fpath, root_uep=group, title=table)
+    assert_frame_equal(df, df_read)
+
+
+# TODO: test appending to an existing table

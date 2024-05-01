@@ -106,6 +106,7 @@ from polars.io.spreadsheet._write_utils import (
     _xl_unique_table_name,
     _XLFormatCache,
 )
+from polars.io.hdf._hdf_writer import _write_frame_to_hdf
 from polars.selectors import _expand_selector_dicts, _expand_selectors
 from polars.slice import PolarsSlice
 from polars.type_aliases import DbWriteMode
@@ -3358,6 +3359,10 @@ class DataFrame:
                 **delta_write_options,
             )
             return None
+
+    def write_hdf(self, table: str,  path: str | Path | None = None, group: str | None = None) -> None:
+        _write_frame_to_hdf(self, table, path=path, group=group)
+        return None
 
     def estimated_size(self, unit: SizeUnit = "b") -> int | float:
         """
