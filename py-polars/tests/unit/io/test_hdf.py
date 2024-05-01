@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 import polars as pl
@@ -153,9 +154,30 @@ def test_read_h5_array(hdf_path, fname, data, schema, where, slice_, group, leaf
 # def test_invalid_file_format():
 #     assert False, "Implement this test"
 
+def test_read_from_h5_file_written_by_pandas(tmp_path):
+    dir = tmp_path / "hdf"
+    dir.mkdir()
+    fpath = dir / "test.h5"
 
-# def test_can_read_from_pandas_pytable_file():
-#     assert False, "Implement this test"
+    # create a pandas dataframe and write it to an h5 file
+    pandas_df = pd.DataFrame(
+    {
+        "integer": [1, 2, 3],
+        "float": [1.0, 2.0, 3.0],
+        "string": ["one", "two", "three"],
+    })
+    pandas_df.to_hdf(fpath, key="test", mode="w")
+
+    # read the h5 file into a polars df
+    df = pl.read_hdf(fpath, group="test")
+    expected = pl.DataFrame({
+        "integer": [1, 2, 3],
+        "float": [1.0, 2.0, 3.0],
+        "string": ["one", "two", "three"],
+    })
+    assert_frame_equal(expected, df)
+
+
 
 # TODO: test compression?
 

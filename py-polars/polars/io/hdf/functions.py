@@ -4,12 +4,14 @@ from pathlib import Path
 
 import tables as tb
 
+import pandas as pd
 import polars.datatypes.classes as pl_dtypes
 import polars._reexport as pl
 from polars.type_aliases import PolarsDataType
+from polars.convert import from_pandas
 
 
-def read_hdf(source: str | Path, group: str | None = None, leaf: str | None = None, where: str | None = None, slice_: slice | None = None, **kwargs):
+def read_hdf(source: str | Path, group: str | None = None, leaf: str | None = None, where: str | None = None, slice_: slice | None = None, is_pandas: bool | None = None, **kwargs):
     """Read a table from a pytables h5 file to a polars dataframe"""
     # TODO: better docstring
 
@@ -36,6 +38,14 @@ def read_hdf(source: str | Path, group: str | None = None, leaf: str | None = No
         # TODO: support navigating to a specific table
         # TODO: support filtering the table
         # find the table under the group 
+
+        # check if this group was written by pandas
+        group_node = h5file.root
+
+        if is_pandas is True or (is_pandas is None and _infer_pandas_group(group_node)):
+            return _read_from_pandas_hdf(source, group)
+
+        # assume this is a generic h5, not necessarily written by pandas 
 
         # look for the correct table in the current group
         leaves = h5file.root._v_leaves.values()
@@ -77,6 +87,7 @@ def read_hdf(source: str | Path, group: str | None = None, leaf: str | None = No
 
 
 def scan_hdf():
+    # TODO: implement scan_hdf
     pass
 
 
@@ -139,3 +150,17 @@ def _read_data(table, where, slice_):
         read = partial(read, start=slice_.start, stop=slice_.stop, step=slice_.step)
 
     return read()
+
+
+def _infer_pandas_group(group) -> bool:
+    # group is considered to be written by pandas if it has a truthy value
+    # for any of the following attributes
+    check = ("pandas_type", "pandas_version")
+    a = group._v_attrs
+    return any(map(lambda x: bool(getattr(a, x, None)), check))
+
+
+def _read_from_pandas_hdf(source, group) -> "DataFrame":
+    # TODO: implement this in a way that does not depend on pandas?
+    pandas_df = pd.read_hdf(path_or_buf=source, key=group, mode="r")
+    return from_pandas(pandas_df)
