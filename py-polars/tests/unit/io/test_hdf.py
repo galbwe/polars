@@ -55,11 +55,20 @@ def _air_quality_schema():
     return {"timestamp": pl_dtypes.Int32, "aqi": pl_dtypes.Int16, "city": pl_dtypes.String, "safe": pl_dtypes.Boolean}
 
 
-def _read_hdf_test_case(fname, data, id_, schema=None, where=None, slice_=None, **pytables_kwargs):
-    return pytest.param(fname, data, schema, where, slice_, pytables_kwargs, id=id_)
+def _read_hdf_test_case(fname, data, id_, schema=None, where=None, slice_=None, group=None, leaf=None, **pytables_kwargs):
+    return pytest.param(
+        fname, 
+        data, 
+        schema, 
+        where, 
+        slice_, 
+        group, 
+        leaf, 
+        pytables_kwargs, 
+        id=id_)
 
 
-@pytest.mark.parametrize("fname,data,schema,where,slice_,pytables_kwargs", [
+@pytest.mark.parametrize("fname,data,schema,where,slice_,group,leaf,pytables_kwargs", [
     _read_hdf_test_case(
         fname="billionaires.h5",
         data=_billionaires_table_data(),
@@ -76,22 +85,22 @@ def _read_hdf_test_case(fname, data, id_, schema=None, where=None, slice_=None, 
         fname="air_quality.h5",
         data=_argentina_air_quality_table_data(),
         schema=_air_quality_schema(),
-        root_uep="/country/ar",
+        group="/country/ar",
         id_="read_hdf_table_from_nested_group_default_table",
     ),
     _read_hdf_test_case(
         fname="air_quality.h5",
         data=_united_states_air_quality_table_data(),
         schema=_air_quality_schema(),
-        title="air_quality",
-        root_uep="/country/us",
+        leaf="air_quality",
+        group="/country/us",
         id_="read_hdf_table_by_name_from_nested_group",
     ),
     _read_hdf_test_case(
         fname="air_quality.h5",
         data=_argentina_air_quality_table_data(),
         schema=_air_quality_schema(),
-        title="air_quality",
+        leaf="air_quality",
         where='city == "Buenos Aires"',
         id_="read_hdf_table_with_a_condition",
     ),
@@ -99,38 +108,38 @@ def _read_hdf_test_case(fname, data, id_, schema=None, where=None, slice_=None, 
         fname="air_quality.h5",
         data=_argentina_air_quality_table_data(),
         schema=_air_quality_schema(),
-        title="air_quality",
+        leaf="air_quality",
         slice_=slice(2, 4, 1),
         id_="read_hdf_table_with_slicing",
     ),
     # TODO: add more test cases that cover the rest of the supported pytables datatypes
 ])
-def test_read_h5_table(hdf_path, fname, data, schema, where, slice_, pytables_kwargs):
-    df = pl.read_hdf(hdf_path / fname, where=where, slice_=slice_, **pytables_kwargs)
+def test_read_h5_table(hdf_path, fname, data, schema, where, slice_, group, leaf, pytables_kwargs):
+    df = pl.read_hdf(hdf_path / fname, where=where, slice_=slice_, group=group, leaf=leaf, **pytables_kwargs)
     expected = pl.DataFrame(data, schema=schema)
     assert_frame_equal(expected, df)
 
 
 
-@pytest.mark.parametrize("fname,data,schema,where,slice_,pytables_kwargs", [
+@pytest.mark.parametrize("fname,data,schema,where,slice_,group,leaf,pytables_kwargs", [
     _read_hdf_test_case(
         fname="air_quality.h5",
         data=_argentina_ozone_aqi_array_data(),
-        title="ozone_aqi",
-        root_uep="/country/ar",
+        leaf="ozone_aqi",
+        group="/country/ar",
         id_="read_hdf_array",
     ),
     _read_hdf_test_case(
         fname="air_quality.h5",
         data=_argentina_ozone_aqi_array_data()[::2],
         slice_=slice(None, None, 2),
-        title="ozone_aqi",
-        root_uep="/country/ar",
+        leaf="ozone_aqi",
+        group="/country/ar",
         id_="read_hdf_array_with_slicing",
     ),
 ])
-def test_read_h5_array(hdf_path, fname, data, schema, where, slice_, pytables_kwargs):
-    s = pl.read_hdf(hdf_path/fname, where=where, slice_=slice_, **pytables_kwargs)
+def test_read_h5_array(hdf_path, fname, data, schema, where, slice_, group, leaf, pytables_kwargs):
+    s = pl.read_hdf(hdf_path/fname, group=group, leaf=leaf, where=where, slice_=slice_, **pytables_kwargs)
     expected = pl.Series(name="ozone_aqi", values=data)
     assert_series_equal(expected, s)
 
@@ -189,7 +198,7 @@ def test_write_hdf_to_a_nested_group(tmp_path):
 
     df.write_hdf(table, path=fpath, group=group)
 
-    df_read = pl.read_hdf(fpath, root_uep=group, title=table)
+    df_read = pl.read_hdf(fpath, group=group, leaf=table)
     assert_frame_equal(df, df_read)
 
 

@@ -9,7 +9,7 @@ import polars._reexport as pl
 from polars.type_aliases import PolarsDataType
 
 
-def read_hdf(source: str | Path, where: str | None = None, slice_: slice | None = None, **kwargs):
+def read_hdf(source: str | Path, group: str | None = None, leaf: str | None = None, where: str | None = None, slice_: slice | None = None, **kwargs):
     """Read a table from a pytables h5 file to a polars dataframe"""
     # TODO: better docstring
 
@@ -19,10 +19,19 @@ def read_hdf(source: str | Path, where: str | None = None, slice_: slice | None 
     # only allow reading
     if "mode" in kwargs:
         del kwargs["mode"]
-    # TODO: replace "root_uep", and "title" params from Pytables open_file with clearer parameter names
+    # use group parameter instead of pytables root_uep
+    if "root_uep" in kwargs:
+        del kwargs["root_uep"]
+    # use leaf parameter instead of pytables title
+    if "title" in kwargs:
+        del kwargs["title"]
+
+    # set the pytables defaults for group and title
+    group = group or "/"
+    leaf = leaf or ""
 
     # open the file
-    with tb.open_file(source, mode="r", **kwargs) as h5file:
+    with tb.open_file(source, mode="r", root_uep=group, title=leaf, **kwargs) as h5file:
         # TODO: check that this is a pytables file
         # TODO: support navigating to a specific table
         # TODO: support filtering the table
@@ -30,34 +39,33 @@ def read_hdf(source: str | Path, where: str | None = None, slice_: slice | None 
 
         # look for the correct table in the current group
         leaves = h5file.root._v_leaves.values()
-        name = kwargs.get("title")
-        if name is not None:
+        if leaf:
             # look for the correct node by name
-            leaves = [x for x in leaves if x.name == name]
+            leaves = [x for x in leaves if x.name == leaf]
 
         # TODO: handle case where leaf does not exist
-        leaf = leaves[0]
+        leaf_node = leaves[0]
         # TODO: determine what kind of leaf this is
-        leaf_is_array = isinstance(leaf, tb.Array)
+        leaf_is_array = isinstance(leaf_node, tb.Array)
         if leaf_is_array:
             # convert array data to polars series
             # TODO; support slicing
-            data = _read_data(leaf, where=None, slice_=slice_)
-            dtype = _resolve_column_dtype(str(leaf.dtype))
-            return pl.Series(name=leaf.name, values=data, dtype=dtype)
+            data = _read_data(leaf_node, where=None, slice_=slice_)
+            dtype = _resolve_column_dtype(str(leaf_node.dtype))
+            return pl.Series(name=leaf_node.name, values=data, dtype=dtype)
 
         # assume leaf is a table
 
         # get the schema for the table
         schema = {
             col: _resolve_column_dtype(pytables_dtype)
-            for col, pytables_dtype in leaf.coltypes.items()
+            for col, pytables_dtype in leaf_node.coltypes.items()
         }
     
 
         # TODO: check if the system has enough memory and raise an error if not?
 
-        data = _read_data(leaf, where, slice_)
+        data = _read_data(leaf_node, where, slice_)
 
         return pl.DataFrame(
             data={

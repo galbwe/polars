@@ -12,7 +12,6 @@ def _write_frame_to_hdf(df: "DataFrame", table: str, path: str | Path | None, gr
     # TODO: if fpath is None, set fpath to the current working directory
     # TODO: support both writing and appending
     with tb.open_file(path, mode="w") as h5file:
-        # TODO: create groups that don't exist yet
         group_path = group
         if group_path is None:
             group = h5file.root
